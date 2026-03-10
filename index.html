@@ -256,6 +256,7 @@ ul, ol { list-style: none; }
       <li><a data-cat="technology">IT/과학</a></li>
       <li><a data-cat="entertainment">연예</a></li>
       <li><a data-cat="sports">스포츠</a></li>
+      <li><a data-cat="life">라이프</a></li>
     </ul>
   </div>
 </nav>
@@ -348,20 +349,12 @@ ul, ol { list-style: none; }
 
 <script>
 // ═══ 설정 ═══
-const RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
-const CATEGORIES = {
-  all:           { label: '전체', url: 'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko' },
-  politics:      { label: '정치', url: 'https://news.google.com/rss/topics/CAAqIQgKIhtDQkFTRGdvSUwyMHZNRFZ4ZERBU0FtdHZLQUFQAQ?hl=ko&gl=KR&ceid=KR:ko' },
-  business:      { label: '경제', url: 'https://news.google.com/rss/topics/CAAqIggKIhxDQkFTRHdvSkwyMHZNR2RtY0RFU0FtdHZLQUFQAQ?hl=ko&gl=KR&ceid=KR:ko' },
-  society:       { label: '사회', url: 'https://news.google.com/rss/topics/CAAqIQgKIhtDQkFTRGdvSUwyMHZNREpxYW5RU0FtdHZLQUFQAQ?hl=ko&gl=KR&ceid=KR:ko' },
-  world:         { label: '국제', url: 'https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FtdHZHZ0pMVWlnQVAB?hl=ko&gl=KR&ceid=KR:ko' },
-  technology:    { label: 'IT/과학', url: 'https://news.google.com/rss/topics/CAAqIggKIhxDQkFTRHdvSkwyMHZNR1ptZHpFU0FtdHZLQUFQAQ?hl=ko&gl=KR&ceid=KR:ko' },
-  entertainment: { label: '연예', url: 'https://news.google.com/rss/topics/CAAqIggKIhxDQkFTRHdvSkwyMHZNREpxYW5RU0FtdHZLQUFQAQ?hl=ko&gl=KR&ceid=KR:ko' },
-  sports:        { label: '스포츠', url: 'https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRFp1ZEdvU0FtdHZHZ0pMVWlnQVAB?hl=ko&gl=KR&ceid=KR:ko' },
+const CAT_LABELS = {
+  '전체':'전체','정치':'정치','경제':'경제','사회':'사회',
+  '국제':'국제','IT/과학':'IT/과학','연예':'연예','스포츠':'스포츠','라이프':'라이프'
 };
-
 const phColors = ['ph-1','ph-2','ph-3','ph-4','ph-5','ph-6','ph-7'];
-let allArticles = {};
+let allArticles = [];
 let currentFilter = 'all';
 
 // ═══ 날짜 표시 ═══
@@ -370,25 +363,13 @@ const days = ['일','월','화','수','목','금','토'];
 document.getElementById('current-date').textContent =
   `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
 
-// ═══ RSS 파싱 (rss2json API - 빠른 응답) ═══
-async function fetchRSS(url) {
+// ═══ 기사 로딩 (articles.json) ═══
+async function fetchArticles() {
   try {
-    const res = await fetch(RSS2JSON + encodeURIComponent(url), { signal: AbortSignal.timeout(8000) });
-    const data = await res.json();
-    if (data.status !== 'ok' || !data.items) return [];
-    return data.items.map(item => {
-      const desc = (item.description || '').replace(/<[^>]*>/g, '').trim();
-      return {
-        title: item.title || '',
-        link: item.link || '#',
-        pubDate: item.pubDate || '',
-        desc,
-        source: item.author || '오토데일리',
-        thumb: item.thumbnail || item.enclosure?.link || '',
-      };
-    });
+    const res = await fetch('articles.json?v=' + Date.now());
+    return await res.json();
   } catch (e) {
-    console.error('RSS fetch error:', e);
+    console.error('Articles load error:', e);
     return [];
   }
 }
@@ -409,137 +390,143 @@ function formatClock(dateStr) {
 }
 
 // ═══ 렌더링 함수들 ═══
+function imgStyle(url) {
+  return url ? `background-image:url(${url});background-size:cover;background-position:center;` : '';
+}
+
 function renderHeadline(articles) {
   const area = document.getElementById('headline-area');
-  if (articles.length < 4) { area.innerHTML = '<p>헤드라인을 불러올 수 없습니다.</p>'; return; }
-  const main = articles[0];
-  const subs = articles.slice(1, 4);
-  const mainPh = phColors[0];
+  if (articles.length < 4) { area.innerHTML = '<p>기사를 불러올 수 없습니다.</p>'; return; }
+  const m = articles[0], subs = articles.slice(1, 4);
   area.innerHTML = `
-    <a href="${main.link}" target="_blank" rel="noopener" class="headline-main">
-      ${main.thumb ? `<img src="${main.thumb}" alt="" onerror="this.style.display='none'">` : ''}
-      <div class="ph ${mainPh}" style="position:absolute;width:100%;height:100%;z-index:0;"></div>
+    <div class="headline-main" onclick="showArticle(${m.id})">
+      <img src="${m.img}" alt="" style="position:absolute;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+      <div class="ph ph-1" style="position:absolute;width:100%;height:100%;z-index:0;"></div>
       <div class="overlay">
-        <span class="category-tag">${main.source}</span>
-        <h2>${main.title}</h2>
-        <p>${main.desc.substring(0, 120)}${main.desc.length > 120 ? '...' : ''}</p>
+        <span class="category-tag">${m.cat}</span>
+        <h2>${m.title}</h2>
+        <p>${m.desc.substring(0,120)}...</p>
       </div>
-    </a>
+    </div>
     <div class="headline-sub">
-      ${subs.map((s, i) => `
-        <a href="${s.link}" target="_blank" rel="noopener" class="headline-sub-item">
-          ${s.thumb ? `<img src="${s.thumb}" alt="" style="position:absolute;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+      ${subs.map((s,i) => `
+        <div class="headline-sub-item" onclick="showArticle(${s.id})">
+          <img src="${s.img}" alt="" style="position:absolute;width:100%;height:100%;object-fit:cover;z-index:0;" onerror="this.style.display='none'">
           <div class="ph ${phColors[i+1]}" style="position:absolute;width:100%;height:100%;z-index:0;"></div>
           <div class="overlay">
-            <span class="category-tag">${s.source}</span>
+            <span class="category-tag">${s.cat}</span>
             <h3>${s.title}</h3>
           </div>
-        </a>
+        </div>
       `).join('')}
-    </div>
-  `;
+    </div>`;
 }
 
 function renderNewsGrid(articles) {
   const grid = document.getElementById('news-grid');
   const items = articles.slice(4, 10);
   if (!items.length) { grid.innerHTML = '<p>기사가 없습니다.</p>'; return; }
-  grid.innerHTML = items.map((a, i) => `
-    <a href="${a.link}" target="_blank" rel="noopener" class="news-card">
-      <div class="thumb ph ${phColors[i % phColors.length]}" style="${a.thumb ? `background-image:url(${a.thumb});background-size:cover;background-position:center;` : ''}"></div>
+  grid.innerHTML = items.map((a,i) => `
+    <div class="news-card" onclick="showArticle(${a.id})">
+      <div class="thumb ph ${phColors[i%7]}" style="${imgStyle(a.img)}"></div>
       <div class="body">
-        <div class="cat">${a.source}</div>
+        <div class="cat">${a.cat}</div>
         <h3>${a.title}</h3>
-        <div class="meta">오토데일리 | ${formatTime(a.pubDate)}</div>
+        <div class="meta">오토데일리 | ${formatTime(a.date)}</div>
       </div>
-    </a>
-  `).join('');
+    </div>`).join('');
 }
 
 function renderNewsList(articles) {
   const list = document.getElementById('news-list');
   const items = articles.slice(10, 25);
   if (!items.length) { list.innerHTML = '<p>기사가 없습니다.</p>'; return; }
-  list.innerHTML = items.map((a, i) => `
-    <a href="${a.link}" target="_blank" rel="noopener" class="news-list-item">
-      <div class="thumb ph ${phColors[i % phColors.length]}" style="${a.thumb ? `background-image:url(${a.thumb});background-size:cover;background-position:center;` : ''}"></div>
+  list.innerHTML = items.map((a,i) => `
+    <div class="news-list-item" onclick="showArticle(${a.id})">
+      <div class="thumb ph ${phColors[i%7]}" style="${imgStyle(a.img)}"></div>
       <div class="info">
-        <div class="cat">${a.source}</div>
+        <div class="cat">${a.cat}</div>
         <h3>${a.title}</h3>
-        <p>${a.desc.substring(0, 150)}</p>
-        <div class="meta">${formatTime(a.pubDate)} | ${a.source}</div>
+        <p>${a.desc.substring(0,150)}</p>
+        <div class="meta">${formatTime(a.date)} | ${a.author}</div>
       </div>
-    </a>
-  `).join('');
+    </div>`).join('');
 }
 
 function renderSidebar(articles) {
-  // 많이 본 뉴스 (랜덤 10개)
   const ranking = document.getElementById('ranking-list');
   const shuffled = [...articles].sort(() => Math.random() - 0.5).slice(0, 10);
-  ranking.innerHTML = shuffled.map((a, i) => `
-    <li onclick="window.open('${a.link}','_blank')">
-      <span class="rank ${i < 3 ? 'top3' : ''}">${i + 1}</span>
+  ranking.innerHTML = shuffled.map((a,i) => `
+    <li onclick="showArticle(${a.id})">
+      <span class="rank ${i<3?'top3':''}">${i+1}</span>
       <span class="title">${a.title}</span>
-    </li>
-  `).join('');
+    </li>`).join('');
 
-  // 실시간 뉴스
   const realtime = document.getElementById('realtime-list');
-  const latest = articles.slice(0, 12);
-  realtime.innerHTML = latest.map(a => `
-    <li onclick="window.open('${a.link}','_blank')">
-      <span class="time">${formatClock(a.pubDate)}</span>
+  realtime.innerHTML = articles.slice(0,12).map(a => `
+    <li onclick="showArticle(${a.id})">
+      <span class="time">${formatClock(a.date)}</span>
       <span class="rt-title">${a.title}</span>
-    </li>
-  `).join('');
+    </li>`).join('');
 }
 
 function renderTicker(articles) {
-  const ticker = document.getElementById('ticker');
-  const items = articles.slice(0, 8);
-  ticker.innerHTML = items.map(a =>
-    `<span>${a.title} <small style="opacity:0.7">(${a.source})</small></span>`
+  document.getElementById('ticker').innerHTML = articles.slice(0,8).map(a =>
+    `<span>${a.title}</span>`
   ).join(' &nbsp;&nbsp;│&nbsp;&nbsp; ');
 }
 
-function renderBottomSections(catData) {
+function renderBottomSections(articles) {
   const container = document.getElementById('bottom-sections');
-  const cats = ['politics', 'business', 'entertainment', 'sports'];
-  container.innerHTML = cats.map(key => {
-    const items = (catData[key] || []).slice(0, 5);
-    return `
-      <div class="bottom-section">
-        <div class="section-title">${CATEGORIES[key].label}</div>
-        <ul>${items.map(a => `
-          <li onclick="window.open('${a.link}','_blank')">${a.title}</li>
-        `).join('')}</ul>
-      </div>
-    `;
+  const cats = ['연예','스포츠','라이프','IT/과학'];
+  container.innerHTML = cats.map(cat => {
+    const items = articles.filter(a => a.cat === cat).slice(0,5);
+    if (!items.length) return '';
+    return `<div class="bottom-section">
+      <div class="section-title">${cat}</div>
+      <ul>${items.map(a => `<li onclick="showArticle(${a.id})">${a.title}</li>`).join('')}</ul>
+    </div>`;
   }).join('');
 }
 
-function renderCategorySections(catData) {
+function renderCategorySections(articles) {
   const container = document.getElementById('category-sections');
-  const displayCats = ['technology', 'world'];
-  container.innerHTML = displayCats.map(key => {
-    const items = (catData[key] || []).slice(0, 6);
+  const cats = ['IT/과학','국제'];
+  container.innerHTML = cats.map(cat => {
+    const items = articles.filter(a => a.cat === cat).slice(0,6);
     if (!items.length) return '';
     return `
-      <div class="section-title" style="margin-top:var(--section-gap);">${CATEGORIES[key].label}</div>
-      <div class="news-grid">${items.map((a, i) => `
-        <a href="${a.link}" target="_blank" rel="noopener" class="news-card">
-          <div class="thumb ph ${phColors[i % phColors.length]}" style="${a.thumb ? `background-image:url(${a.thumb});background-size:cover;background-position:center;` : ''}"></div>
+      <div class="section-title" style="margin-top:var(--section-gap);">${cat}</div>
+      <div class="news-grid">${items.map((a,i) => `
+        <div class="news-card" onclick="showArticle(${a.id})">
+          <div class="thumb ph ${phColors[i%7]}" style="${imgStyle(a.img)}"></div>
           <div class="body">
-            <div class="cat">${a.source}</div>
+            <div class="cat">${a.cat}</div>
             <h3>${a.title}</h3>
-            <div class="meta">${formatTime(a.pubDate)}</div>
+            <div class="meta">${formatTime(a.date)}</div>
           </div>
-        </a>
-      `).join('')}</div>
-    `;
+        </div>`).join('')}</div>`;
   }).join('');
 }
+
+// ═══ 기사 상세 보기 ═══
+function showArticle(id) {
+  const a = allArticles.find(x => x.id === id);
+  if (!a) return;
+  document.querySelector('main').innerHTML = `
+    <div style="margin-bottom:20px;"><a href="#" onclick="location.reload();return false;" style="color:var(--accent);font-size:0.85rem;">&larr; 목록으로</a></div>
+    <article style="background:#fff;padding:30px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+      <div style="font-size:0.75rem;color:var(--accent);font-weight:700;margin-bottom:8px;">${a.cat}</div>
+      <h1 style="font-family:var(--serif);font-size:1.8rem;font-weight:700;line-height:1.4;margin-bottom:12px;">${a.title}</h1>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:20px;">${a.date} | ${a.author}</div>
+      <img src="${a.img}" alt="" style="width:100%;max-height:500px;object-fit:cover;border-radius:4px;margin-bottom:20px;" onerror="this.style.display='none'">
+      <p style="font-size:1rem;line-height:1.8;color:var(--text);">${a.desc}</p>
+    </article>`;
+  window.scrollTo(0,0);
+}
+
+// ═══ 카테고리 매핑 ═══
+const catMap = { all:'전체', politics:'정치', business:'경제', society:'사회', world:'국제', technology:'IT/과학', entertainment:'연예', sports:'스포츠', life:'라이프' };
 
 // ═══ 네비게이션 필터 ═══
 document.querySelectorAll('.nav a[data-cat]').forEach(a => {
@@ -549,64 +536,40 @@ document.querySelectorAll('.nav a[data-cat]').forEach(a => {
     a.classList.add('active');
     const cat = a.dataset.cat;
     currentFilter = cat;
-    if (cat === 'all') {
-      renderAll(allArticles);
-    } else if (allArticles[cat]) {
-      renderFiltered(allArticles[cat], CATEGORIES[cat].label);
-    }
+    const label = catMap[cat] || '전체';
+    const filtered = cat === 'all' ? allArticles : allArticles.filter(x => x.cat === label);
+    renderPage(filtered, cat === 'all');
   });
 });
 
-function renderFiltered(articles, label) {
+function renderPage(articles, showExtra) {
   renderHeadline(articles);
   renderNewsGrid(articles);
   renderNewsList(articles);
   renderSidebar(articles);
   renderTicker(articles);
-  document.getElementById('category-sections').innerHTML = '';
-  document.getElementById('bottom-sections').innerHTML = '';
-}
-
-function renderAll(catData) {
-  const main = catData.all || [];
-  renderHeadline(main);
-  renderNewsGrid(main);
-  renderNewsList(main);
-  renderSidebar(main);
-  renderTicker(main);
-  renderCategorySections(catData);
-  renderBottomSections(catData);
+  if (showExtra) {
+    renderCategorySections(allArticles);
+    renderBottomSections(allArticles);
+  } else {
+    document.getElementById('category-sections').innerHTML = '';
+    document.getElementById('bottom-sections').innerHTML = '';
+  }
 }
 
 // ═══ 검색 ═══
 function searchNews() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
-  const all = Object.values(allArticles).flat();
-  const results = all.filter(a => a.title.includes(q) || a.desc.includes(q));
-  renderFiltered(results.length ? results : [{title:'검색 결과가 없습니다.',link:'#',pubDate:'',desc:'',source:'',thumb:''}], '검색: ' + q);
+  const results = allArticles.filter(a => a.title.includes(q) || a.desc.includes(q));
+  renderPage(results.length ? results : allArticles, false);
 }
 document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') searchNews(); });
 
 // ═══ 메인 로딩 ═══
 async function init() {
-  // 전체 뉴스 먼저 로드
-  allArticles.all = await fetchRSS(CATEGORIES.all.url);
-  if (allArticles.all.length) renderAll(allArticles);
-
-  // 나머지 카테고리 병렬 로드
-  const catKeys = Object.keys(CATEGORIES).filter(k => k !== 'all');
-  const results = await Promise.allSettled(
-    catKeys.map(key => fetchRSS(CATEGORIES[key].url))
-  );
-  results.forEach((result, i) => {
-    if (result.status === 'fulfilled') {
-      allArticles[catKeys[i]] = result.value;
-    }
-  });
-
-  // 전체 다시 렌더링
-  if (currentFilter === 'all') renderAll(allArticles);
+  allArticles = await fetchArticles();
+  if (allArticles.length) renderPage(allArticles, true);
 }
 
 init();
