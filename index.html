@@ -218,11 +218,7 @@ ul, ol { list-style: none; }
       <span id="current-date"></span>
       <div class="weather"><span>&#9925;</span><span>서울</span></div>
     </div>
-    <div>
-      <a href="#">로그인</a>
-      <a href="#">회원가입</a>
-      <a href="#">뉴스레터</a>
-    </div>
+    <div></div>
   </div>
 </div>
 
@@ -237,23 +233,6 @@ ul, ol { list-style: none; }
   </div>
 </header>
 
-<!-- 네비게이션 -->
-<nav class="nav">
-  <div class="container" style="display:flex;justify-content:center;position:relative;">
-    <button class="mobile-toggle" onclick="document.querySelector('.nav ul').classList.toggle('open')">&#9776;</button>
-    <ul>
-      <li><a class="active" data-cat="all">전체</a></li>
-      <li><a data-cat="politics">정치</a></li>
-      <li><a data-cat="business">경제</a></li>
-      <li><a data-cat="society">사회</a></li>
-      <li><a data-cat="world">국제</a></li>
-      <li><a data-cat="technology">IT/과학</a></li>
-      <li><a data-cat="entertainment">연예</a></li>
-      <li><a data-cat="sports">스포츠</a></li>
-      <li><a data-cat="life">라이프</a></li>
-    </ul>
-  </div>
-</nav>
 
 <div class="container">
   <div class="main-layout">
@@ -782,22 +761,15 @@ function showArticle(id) {
   window.scrollTo(0,0);
 }
 
-// ═══ 카테고리 매핑 ═══
-const catMap = { all:'전체', politics:'정치', business:'경제', society:'사회', world:'국제', technology:'IT/과학', entertainment:'연예', sports:'스포츠', life:'라이프' };
-
-// ═══ 네비게이션 필터 ═══
-document.querySelectorAll('.nav a[data-cat]').forEach(a => {
-  a.addEventListener('click', (e) => {
-    e.preventDefault();
-    document.querySelectorAll('.nav a').forEach(x => x.classList.remove('active'));
-    a.classList.add('active');
-    const cat = a.dataset.cat;
-    currentFilter = cat;
-    const label = catMap[cat] || '전체';
-    const filtered = cat === 'all' ? allArticles : allArticles.filter(x => x.cat === label);
-    renderPage(filtered, cat === 'all');
-  });
-});
+// ═══ 랜덤 셔플 ═══
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 function renderPage(articles, showExtra) {
   renderHeadline(articles);
@@ -825,7 +797,7 @@ document.getElementById('searchInput').addEventListener('keypress', e => { if (e
 
 // ═══ 메인 로딩 ═══
 async function init() {
-  allArticles = await fetchArticles();
+  allArticles = shuffle(await fetchArticles());
   if (allArticles.length) renderPage(allArticles, true);
 }
 
