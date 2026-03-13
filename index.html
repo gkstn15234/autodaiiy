@@ -1020,8 +1020,11 @@ document.getElementById('searchInput').addEventListener('keypress', e => { if (e
 
 // ═══ 메인 로딩 ═══
 async function init() {
-  allArticles = shuffle(await fetchArticles());
-  if (allArticles.length) renderPage(allArticles, true);
+  const all = await fetchArticles();
+  allArticles = all;
+  // 메인에는 자동차 기사만 표시
+  const carArticles = all.filter(a => a.cat === '자동차');
+  if (carArticles.length) renderPage(shuffle(carArticles), true);
 }
 
 init();
