@@ -219,24 +219,19 @@ def run():
     with open(json_path, 'r', encoding='utf-8') as f:
         existing = json.load(f)
 
-    # 2. 새 기사에 ID 부여 (기존 기사 앞에 삽입, id는 -14 ~ -1)
-    for i, art in enumerate(NEW_ARTICLES):
-        art['id'] = -(len(NEW_ARTICLES) - i)
+    # 2. 기존 기사에서 자동차 기사 제거 (중복 방지), 원래 종합뉴스만 남기기
+    original_articles = [a for a in existing if a.get('cat') != '자동차']
 
-    # 3. 합치기: 기존 id=0 기사 + 새 14개 + 나머지 기존 기사
-    # 기존 id=0 (니로 기사)을 맨 앞에 유지
-    niro_article = None
-    rest_existing = []
-    for a in existing:
-        if a['id'] == 0:
-            niro_article = a
-        else:
-            rest_existing.append(a)
+    # 3. 니로 기사 (첫 번째로 작성한 것) 포함
+    niro_article = next((a for a in existing if a.get('cat') == '자동차' and '니로' in a.get('title','')), None)
 
+    # 4. 합치기: 니로 + 새 14개 + 기존 종합뉴스
+    car_articles = []
     if niro_article:
-        all_articles = [niro_article] + NEW_ARTICLES + rest_existing
-    else:
-        all_articles = NEW_ARTICLES + existing
+        car_articles.append(niro_article)
+    car_articles.extend(NEW_ARTICLES)
+
+    all_articles = car_articles + original_articles
 
     # 4. ID 재부여 (0부터 순서대로)
     for i, art in enumerate(all_articles):
@@ -251,6 +246,11 @@ def run():
     html_path = os.path.join(BASE_DIR, 'index.html')
     with open(html_path, 'r', encoding='utf-8') as f:
         html = f.read()
+
+    # desc 안의 \n을 공백으로 치환 (JS inline JSON에서 줄바꿈 에러 방지)
+    for art in all_articles:
+        if 'desc' in art:
+            art['desc'] = art['desc'].replace('\n', ' ')
 
     # ARTICLES_DATA 배열 찾아서 교체
     pattern = r'const ARTICLES_DATA = \[.*?\];'
