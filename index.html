@@ -249,10 +249,15 @@ ul, ol { list-style: none; }
       </div>
 
       <!-- 카테고리별 최신 뉴스 -->
-      <div class="section-title">최신 뉴스 <span class="live-badge">LIVE</span></div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>최신 뉴스 <span class="live-badge">LIVE</span></span>
+        <span id="all-news-btn" onclick="toggleAllNews()" style="cursor:pointer;font-family:var(--sans);font-size:0.75rem;color:var(--accent);font-weight:700;border:1px solid var(--accent);padding:3px 10px;border-radius:3px;transition:all 0.2s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--accent)'">모든 뉴스 보기 ▼</span>
+      </div>
       <div class="news-list" id="news-list">
         <div class="loading">기사를 불러오는 중</div>
       </div>
+      <!-- 모든 뉴스 목록 -->
+      <div id="all-news-list" style="display:none;"></div>
 
       <!-- 카테고리 섹션 -->
       <div id="category-sections"></div>
@@ -1217,6 +1222,46 @@ function renderPage(articles, showExtra) {
     document.getElementById('category-sections').innerHTML = '';
     document.getElementById('bottom-sections').innerHTML = '';
   }
+}
+
+// ═══ 모든 뉴스 보기 ═══
+let allNewsOpen = false;
+function toggleAllNews() {
+  const container = document.getElementById('all-news-list');
+  const btn = document.getElementById('all-news-btn');
+  allNewsOpen = !allNewsOpen;
+  if (allNewsOpen) {
+    btn.textContent = '접기 ▲';
+    renderAllNewsList(allArticles);
+    container.style.display = 'block';
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    btn.textContent = '모든 뉴스 보기 ▼';
+    container.style.display = 'none';
+    container.innerHTML = '';
+  }
+}
+
+function renderAllNewsList(articles) {
+  const container = document.getElementById('all-news-list');
+  // 날짜 내림차순 정렬
+  const sorted = [...articles].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  container.innerHTML = `
+    <div style="background:#fff;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;margin-bottom:var(--section-gap);">
+      <div style="padding:14px 20px;background:var(--primary);color:#fff;font-weight:700;font-size:0.95rem;">
+        전체 기사 목록 <span style="font-size:0.8rem;font-weight:400;color:#aaa;">총 ${sorted.length}건</span>
+      </div>
+      ${sorted.map((a, i) => `
+        <div onclick="showArticle(${a.id})" style="display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
+          <span style="min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:${i < 3 ? 'var(--accent)' : i < 10 ? 'var(--blue)' : '#bbb'};color:#fff;border-radius:50%;font-size:0.78rem;font-weight:700;flex-shrink:0;">${i + 1}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.68rem;color:var(--accent);font-weight:700;margin-bottom:2px;">${a.cat}</div>
+            <div style="font-size:0.92rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.title}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">${a.date} | ${a.author || '스케치투어'}</div>
+          </div>
+          ${a.img ? `<img src="${a.img}" alt="" style="width:70px;height:50px;object-fit:cover;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+        </div>`).join('')}
+    </div>`;
 }
 
 // ═══ 검색 ═══
