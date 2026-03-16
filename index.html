@@ -5126,7 +5126,7 @@ function renderHeadline(articles) {
   if (articles.length < 4) { area.innerHTML = '<p>기사를 불러올 수 없습니다.</p>'; return; }
   const m = articles[0], subs = articles.slice(1, 4);
   area.innerHTML = `
-    <div class="headline-main" onclick="showArticle(${m.id})">
+    <div class="headline-main" onclick="showArticle('${m.id}')">
       <div class="ph ph-1" style="position:absolute;width:100%;height:100%;z-index:0;"></div>
       <img src="${m.img}" alt="" style="position:absolute;width:100%;height:100%;object-fit:cover;z-index:1;" onerror="this.style.display='none'">
       <div class="overlay" style="z-index:2;">
@@ -5137,7 +5137,7 @@ function renderHeadline(articles) {
     </div>
     <div class="headline-sub">
       ${subs.map((s,i) => `
-        <div class="headline-sub-item" onclick="showArticle(${s.id})">
+        <div class="headline-sub-item" onclick="showArticle('${s.id}')">
           <div class="ph ${phColors[i+1]}" style="position:absolute;width:100%;height:100%;z-index:0;"></div>
           <img src="${s.img}" alt="" style="position:absolute;width:100%;height:100%;object-fit:cover;z-index:1;" onerror="this.style.display='none'">
           <div class="overlay" style="z-index:2;"
@@ -5154,7 +5154,7 @@ function renderNewsGrid(articles) {
   const items = articles.slice(4, 10);
   if (!items.length) { grid.innerHTML = '<p>기사가 없습니다.</p>'; return; }
   grid.innerHTML = items.map((a,i) => `
-    <div class="news-card" onclick="showArticle(${a.id})">
+    <div class="news-card" onclick="showArticle('${a.id}')">
       <div class="thumb ph ${phColors[i%7]}" style="${imgStyle(a.img)}"></div>
       <div class="body">
         <div class="cat">${a.cat}</div>
@@ -5169,7 +5169,7 @@ function renderNewsList(articles) {
   const items = articles.slice(10, 25);
   if (!items.length) { list.innerHTML = '<p>기사가 없습니다.</p>'; return; }
   list.innerHTML = items.map((a,i) => `
-    <div class="news-list-item" onclick="showArticle(${a.id})">
+    <div class="news-list-item" onclick="showArticle('${a.id}')">
       <div class="thumb ph ${phColors[i%7]}" style="${imgStyle(a.img)}"></div>
       <div class="info">
         <div class="cat">${a.cat}</div>
@@ -5184,14 +5184,14 @@ function renderSidebar(articles) {
   const ranking = document.getElementById('ranking-list');
   const shuffled = [...articles].sort(() => Math.random() - 0.5).slice(0, 10);
   ranking.innerHTML = shuffled.map((a,i) => `
-    <li onclick="showArticle(${a.id})">
+    <li onclick="showArticle('${a.id}')">
       <span class="rank ${i<3?'top3':''}">${i+1}</span>
       <span class="title">${a.title}</span>
     </li>`).join('');
 
   const realtime = document.getElementById('realtime-list');
   realtime.innerHTML = articles.slice(0,12).map(a => `
-    <li onclick="showArticle(${a.id})">
+    <li onclick="showArticle('${a.id}')">
       <span class="time">${formatClock(a.date)}</span>
       <span class="rt-title">${a.title}</span>
     </li>`).join('');
@@ -5207,7 +5207,7 @@ function renderBottomSections(articles) {
     if (!items.length) return '';
     return `<div class="bottom-section">
       <div class="section-title">${cat}</div>
-      <ul>${items.map(a => `<li onclick="showArticle(${a.id})">${a.title}</li>`).join('')}</ul>
+      <ul>${items.map(a => `<li onclick="showArticle('${a.id}')">${a.title}</li>`).join('')}</ul>
     </div>`;
   }).join('');
 }
@@ -5221,7 +5221,7 @@ function renderCategorySections(articles) {
     return `
       <div class="section-title" style="margin-top:var(--section-gap);">${cat}</div>
       <div class="news-grid">${items.map((a,i) => `
-        <div class="news-card" onclick="showArticle(${a.id})">
+        <div class="news-card" onclick="showArticle('${a.id}')">
           <div class="thumb ph ${phColors[i%7]}" style="${imgStyle(a.img)}"></div>
           <div class="body">
             <div class="cat">${a.cat}</div>
@@ -5337,7 +5337,7 @@ function renderAllNewsList() {
         const num = start + i + 1;
         const bg = num <= 3 ? 'var(--accent)' : num <= 10 ? 'var(--blue)' : 'var(--text-muted)';
         return `
-        <div onclick="showArticle(${a.id})" style="display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
+        <div onclick="showArticle('${a.id}')" style="display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
           <span style="min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:${bg};color:#fff;border-radius:50%;font-size:0.78rem;font-weight:700;flex-shrink:0;">${num}</span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:0.68rem;color:var(--accent);font-weight:700;margin-bottom:2px;">${a.cat}</div>
