@@ -1224,15 +1224,21 @@ function renderPage(articles, showExtra) {
   }
 }
 
-// ═══ 모든 뉴스 보기 ═══
+// ═══ 모든 뉴스 보기 (페이지네이션) ═══
 let allNewsOpen = false;
+let allNewsSorted = [];
+let allNewsPage = 1;
+const ALL_NEWS_PER_PAGE = 10;
+
 function toggleAllNews() {
   const container = document.getElementById('all-news-list');
   const btn = document.getElementById('all-news-btn');
   allNewsOpen = !allNewsOpen;
   if (allNewsOpen) {
     btn.textContent = '접기 ▲';
-    renderAllNewsList(allArticles);
+    allNewsSorted = [...allArticles].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    allNewsPage = 1;
+    renderAllNewsList();
     container.style.display = 'block';
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } else {
@@ -1242,26 +1248,59 @@ function toggleAllNews() {
   }
 }
 
-function renderAllNewsList(articles) {
+function renderAllNewsList() {
   const container = document.getElementById('all-news-list');
-  // 날짜 내림차순 정렬
-  const sorted = [...articles].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const total = allNewsSorted.length;
+  const totalPages = Math.ceil(total / ALL_NEWS_PER_PAGE);
+  const start = (allNewsPage - 1) * ALL_NEWS_PER_PAGE;
+  const end = start + ALL_NEWS_PER_PAGE;
+  const pageItems = allNewsSorted.slice(start, end);
+
+  // 페이지 번호 버튼 (최대 10개씩 그룹)
+  const groupSize = 10;
+  const groupStart = Math.floor((allNewsPage - 1) / groupSize) * groupSize + 1;
+  const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
+  let pageButtons = '';
+  if (groupStart > 1) pageButtons += `<button onclick="allNewsGoPage(${groupStart - 1})" style="${pgBtnStyle(false)}">◀</button>`;
+  for (let p = groupStart; p <= groupEnd; p++) {
+    pageButtons += `<button onclick="allNewsGoPage(${p})" style="${pgBtnStyle(p === allNewsPage)}">${p}</button>`;
+  }
+  if (groupEnd < totalPages) pageButtons += `<button onclick="allNewsGoPage(${groupEnd + 1})" style="${pgBtnStyle(false)}">▶</button>`;
+
   container.innerHTML = `
     <div style="background:#fff;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;margin-bottom:var(--section-gap);">
-      <div style="padding:14px 20px;background:var(--primary);color:#fff;font-weight:700;font-size:0.95rem;">
-        전체 기사 목록 <span style="font-size:0.8rem;font-weight:400;color:#aaa;">총 ${sorted.length}건</span>
+      <div style="padding:14px 20px;background:var(--primary);color:#fff;font-weight:700;font-size:0.95rem;display:flex;align-items:center;justify-content:space-between;">
+        <span>전체 기사 목록 <span style="font-size:0.8rem;font-weight:400;color:#aaa;">총 ${total}건</span></span>
+        <span style="font-size:0.78rem;font-weight:400;color:#aaa;">${allNewsPage} / ${totalPages} 페이지</span>
       </div>
-      ${sorted.map((a, i) => `
+      ${pageItems.map((a, i) => {
+        const num = start + i + 1;
+        const bg = num <= 3 ? 'var(--accent)' : num <= 10 ? 'var(--blue)' : 'var(--text-muted)';
+        return `
         <div onclick="showArticle(${a.id})" style="display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
-          <span style="min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:${i < 3 ? 'var(--accent)' : i < 10 ? 'var(--blue)' : '#bbb'};color:#fff;border-radius:50%;font-size:0.78rem;font-weight:700;flex-shrink:0;">${i + 1}</span>
+          <span style="min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:${bg};color:#fff;border-radius:50%;font-size:0.78rem;font-weight:700;flex-shrink:0;">${num}</span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:0.68rem;color:var(--accent);font-weight:700;margin-bottom:2px;">${a.cat}</div>
             <div style="font-size:0.92rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.title}</div>
             <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">${a.date} | ${a.author || '스케치투어'}</div>
           </div>
           ${a.img ? `<img src="${a.img}" alt="" style="width:70px;height:50px;object-fit:cover;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:center;gap:6px;padding:16px 20px;flex-wrap:wrap;">
+        ${pageButtons}
+      </div>
     </div>`;
+}
+
+function pgBtnStyle(active) {
+  return `min-width:34px;height:34px;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'var(--accent)' : '#fff'};color:${active ? '#fff' : 'var(--text)'};border-radius:3px;cursor:pointer;font-size:0.82rem;font-weight:${active ? '700' : '400'};transition:all 0.15s;`;
+}
+
+function allNewsGoPage(p) {
+  allNewsPage = p;
+  renderAllNewsList();
+  document.getElementById('all-news-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ═══ 검색 ═══
